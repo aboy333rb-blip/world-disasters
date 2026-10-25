@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>رصد الكوارث العالمية</title>
   
-  <!-- ملفات الخريطة التفاعلية المجانية Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -24,7 +23,6 @@
     .warning { color: #fbbf24; }
     .info { color: #38bdf8; }
 
-    /* صندوق الخريطة التفاعلية */
     #map { width: 100%; height: 320px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #27272a; z-index: 1; }
 
     input { width: 100%; background: #18181b; border: 1px solid #3f3f46; color: #fff; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; outline: none; }
@@ -59,7 +57,6 @@
     </div>
   </div>
 
-  <!-- الخريطة -->
   <div id="map"></div>
 
   <input type="text" id="search" placeholder="ابحث باسم الدولة أو المدينة..." oninput="filterData()">
@@ -82,10 +79,10 @@
   </div>
 
   <script>
-    // إعداد الخريطة التفاعلية
+    // خريطة مجانية ومفتوحة بالكامل بدون قيود
     const map = L.map('map').setView([20, 0], 2);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 18
     }).addTo(map);
 
@@ -123,15 +120,14 @@
         if (mag >= 6.0) { color = '#f43f5e'; cls = 'badge-high'; }
         else if (mag >= 4.5) { color = '#fbbf24'; cls = 'badge-mid'; }
 
-        // إضافة نقطة دائرية على الخريطة
         const circle = L.circleMarker(coords, {
           radius: Math.max(mag * 2, 4),
           fillColor: color,
           color: '#ffffff',
-          weight: 0.5,
+          weight: 0.8,
           opacity: 1,
-          fillOpacity: 0.7
-        }).bindPopup(`<b>${place}</b><br>القوة: ${mag}<br>الوقت: ${time}`);
+          fillOpacity: 0.75
+        }).bindPopup(`<b>${place}</b><br>القوة: ${mag}<br>التوقيت: ${time}`);
         
         markersLayer.addLayer(circle);
 
