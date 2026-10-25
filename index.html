@@ -4,12 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>رصد الكوارث العالمية</title>
+  
+  <!-- ملفات الخريطة التفاعلية المجانية Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
     body { background-color: #121214; color: #ffffff; padding: 15px; }
-    header { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 1px solid #27272a; }
+    header { text-align: center; margin-bottom: 15px; padding: 10px; border-bottom: 1px solid #27272a; }
     header h1 { font-size: 20px; color: #f43f5e; margin-bottom: 5px; }
     header p { font-size: 12px; color: #a1a1aa; }
+    
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 15px; }
     .stat-card { background: #18181b; padding: 12px; border-radius: 8px; border: 1px solid #27272a; text-align: center; }
     .stat-card span { font-size: 11px; color: #a1a1aa; display: block; margin-bottom: 4px; }
@@ -17,6 +23,10 @@
     .danger { color: #f43f5e; }
     .warning { color: #fbbf24; }
     .info { color: #38bdf8; }
+
+    /* صندوق الخريطة التفاعلية */
+    #map { width: 100%; height: 320px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #27272a; z-index: 1; }
+
     input { width: 100%; background: #18181b; border: 1px solid #3f3f46; color: #fff; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; outline: none; }
     .table-container { overflow-x: auto; background: #18181b; border-radius: 8px; border: 1px solid #27272a; }
     table { width: 100%; border-collapse: collapse; text-align: right; font-size: 12px; }
@@ -33,6 +43,7 @@
     <h1>رصد الكوارث الحية (عالمياً)</h1>
     <p>تحديث إحصائي فوري من المراصد العالمية</p>
   </header>
+
   <div class="stats-grid">
     <div class="stat-card">
       <span>إجمالي الهزات</span>
@@ -47,7 +58,12 @@
       <strong class="warning" id="strong-count">...</strong>
     </div>
   </div>
+
+  <!-- الخريطة -->
+  <div id="map"></div>
+
   <input type="text" id="search" placeholder="ابحث باسم الدولة أو المدينة..." oninput="filterData()">
+  
   <div class="table-container">
     <table>
       <thead>
@@ -64,8 +80,18 @@
       </tbody>
     </table>
   </div>
+
   <script>
+    // إعداد الخريطة التفاعلية
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      maxZoom: 18
+    }).addTo(map);
+
     let disasters = [];
+    let markersLayer = L.layerGroup().addTo(map);
+
     async function loadData() {
       try {
         const res = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson');
@@ -76,29 +102,52 @@
         console.error(e);
       }
     }
+
     function render(items) {
       const tbody = document.getElementById('disaster-table');
       tbody.innerHTML = '';
+      markersLayer.clearLayers();
+
       let max = 0, strong = 0;
       items.forEach(i => {
         const mag = i.properties.mag ? i.properties.mag.toFixed(1) : "0.0";
         const place = i.properties.place || "غير محدد";
         const time = new Date(i.properties.time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        const coords = [i.geometry.coordinates[1], i.geometry.coordinates[0]];
+
         if (i.properties.mag > max) max = i.properties.mag;
         if (i.properties.mag >= 5.0) strong++;
+
+        let color = '#38bdf8';
         let cls = 'badge-low';
-        if (mag >= 6.0) cls = 'badge-high';
-        else if (mag >= 4.5) cls = 'badge-mid';
+        if (mag >= 6.0) { color = '#f43f5e'; cls = 'badge-high'; }
+        else if (mag >= 4.5) { color = '#fbbf24'; cls = 'badge-mid'; }
+
+        // إضافة نقطة دائرية على الخريطة
+        const circle = L.circleMarker(coords, {
+          radius: Math.max(mag * 2, 4),
+          fillColor: color,
+          color: '#ffffff',
+          weight: 0.5,
+          opacity: 1,
+          fillOpacity: 0.7
+        }).bindPopup(`<b>${place}</b><br>القوة: ${mag}<br>الوقت: ${time}`);
+        
+        markersLayer.addLayer(circle);
+
         tbody.innerHTML += `<tr><td><span class="badge ${cls}">${mag}</span></td><td>${place}</td><td>${time}</td></tr>`;
       });
+
       document.getElementById('total-count').innerText = items.length;
       document.getElementById('max-mag').innerText = max ? max.toFixed(1) : "0";
       document.getElementById('strong-count').innerText = strong;
     }
+
     function filterData() {
       const q = document.getElementById('search').value.toLowerCase();
       render(disasters.filter(i => (i.properties.place || "").toLowerCase().includes(q)));
     }
+
     loadData();
     setInterval(loadData, 60000);
   </script>
