@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>رصد الكوارث العالمية</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background-color: #121214; color: #ffffff; padding: 15px; }
+    header { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 1px solid #27272a; }
+    header h1 { font-size: 20px; color: #f43f5e; margin-bottom: 5px; }
+    header p { font-size: 12px; color: #a1a1aa; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-bottom: 15px; }
+    .stat-card { background: #18181b; padding: 12px; border-radius: 8px; border: 1px solid #27272a; text-align: center; }
+    .stat-card span { font-size: 11px; color: #a1a1aa; display: block; margin-bottom: 4px; }
+    .stat-card strong { font-size: 20px; font-weight: bold; }
+    .danger { color: #f43f5e; }
+    .warning { color: #fbbf24; }
+    .info { color: #38bdf8; }
+    input { width: 100%; background: #18181b; border: 1px solid #3f3f46; color: #fff; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; outline: none; }
+    .table-container { overflow-x: auto; background: #18181b; border-radius: 8px; border: 1px solid #27272a; }
+    table { width: 100%; border-collapse: collapse; text-align: right; font-size: 12px; }
+    th { background: #27272a; padding: 10px 8px; color: #e4e4e7; }
+    td { padding: 10px 8px; border-bottom: 1px solid #27272a; color: #d4d4d8; }
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .badge-high { background: #f43f5e; color: #fff; }
+    .badge-mid { background: #fbbf24; color: #000; }
+    .badge-low { background: #3f3f46; color: #fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>رصد الكوارث الحية (عالمياً)</h1>
+    <p>تحديث إحصائي فوري من المراصد العالمية</p>
+  </header>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span>إجمالي الهزات</span>
+      <strong class="info" id="total-count">...</strong>
+    </div>
+    <div class="stat-card">
+      <span>أعلى قوة</span>
+      <strong class="danger" id="max-mag">...</strong>
+    </div>
+    <div class="stat-card">
+      <span>هزات قوية (+5)</span>
+      <strong class="warning" id="strong-count">...</strong>
+    </div>
+  </div>
+  <input type="text" id="search" placeholder="ابحث باسم الدولة أو المدينة..." oninput="filterData()">
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>القوة</th>
+          <th>الموقع</th>
+          <th>التوقيت</th>
+        </tr>
+      </thead>
+      <tbody id="disaster-table">
+        <tr>
+          <td colspan="3" style="text-align: center; padding: 15px;">جارٍ جلب البيانات الحية...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <script>
+    let disasters = [];
+    async function loadData() {
+      try {
+        const res = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson');
+        const data = await res.json();
+        disasters = data.features;
+        render(disasters);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    function render(items) {
+      const tbody = document.getElementById('disaster-table');
+      tbody.innerHTML = '';
+      let max = 0, strong = 0;
+      items.forEach(i => {
+        const mag = i.properties.mag ? i.properties.mag.toFixed(1) : "0.0";
+        const place = i.properties.place || "غير محدد";
+        const time = new Date(i.properties.time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        if (i.properties.mag > max) max = i.properties.mag;
+        if (i.properties.mag >= 5.0) strong++;
+        let cls = 'badge-low';
+        if (mag >= 6.0) cls = 'badge-high';
+        else if (mag >= 4.5) cls = 'badge-mid';
+        tbody.innerHTML += `<tr><td><span class="badge ${cls}">${mag}</span></td><td>${place}</td><td>${time}</td></tr>`;
+      });
+      document.getElementById('total-count').innerText = items.length;
+      document.getElementById('max-mag').innerText = max ? max.toFixed(1) : "0";
+      document.getElementById('strong-count').innerText = strong;
+    }
+    function filterData() {
+      const q = document.getElementById('search').value.toLowerCase();
+      render(disasters.filter(i => (i.properties.place || "").toLowerCase().includes(q)));
+    }
+    loadData();
+    setInterval(loadData, 60000);
+  </script>
+</body>
+</html>
